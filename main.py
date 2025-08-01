@@ -1,4 +1,4 @@
-# main.py en Replit (VERSIÓN ACTUALIZADA PARA BUSCAR .AIO)
+# main.py en Replit (VERSIÓN CON (pat) Y run_logic_from_...)
 import re
 import os
 
@@ -20,25 +20,21 @@ def parse_aio_file(file_path):
         'esp': re.findall(r'\(esp\)(.*?)\(/esp\)', content, re.DOTALL),
         'ing': re.findall(r'<ING>(.*?)</ING>', content, re.DOTALL),
         'net': re.findall(r'<net>(.*?)</net>', content, re.DOTALL),
-        'lua': re.findall(r'<lua>(.*?)</lua>', content, re.DOTALL)
+        'lua': re.findall(r'<lua>(.*?)</lua>', content, re.DOTALL),
+        'pat': re.findall(r'\(pat\)(.*?)\(/pat\)', content, re.DOTALL) # Nuevo patrón para (pat)
     }
     return blocks
 
 # Esta función guardará cada bloque en un archivo separado
 def save_blocks_to_files(blocks, base_name):
-    # base_name se usa para diferenciar archivos si hay múltiples .aio
-    # Ejemplo: mi_buscaminas.html, mi_buscaminas.css, etc.
-    # Para la web principal, siempre usaremos index.html, style.css, script.js
-    # Esto es una simplificación para el Buscaminas. Para proyectos más grandes,
-    # se necesitaría una estrategia de nombres más sofisticada.
-
     html_output_name = 'index.html'
     css_output_name = 'style.css'
     js_output_name = 'script.js'
     esp_output_name = f'logic_{base_name}.esp'
     ing_output_name = f'logic_{base_name}.ing'
-    net_output_name = f'Program_{base_name}.cs' # Para C# dentro de .NET
+    net_output_name = f'Program_{base_name}.cs'
     lua_output_name = f'main_{base_name}.lua'
+    pat_output_name = f'patterns_{base_name}.pat' # Nombre para el archivo (pat)
 
     if blocks['html']:
         with open(html_output_name, 'w', encoding='utf-8') as f:
@@ -63,36 +59,27 @@ def save_blocks_to_files(blocks, base_name):
     if blocks['esp']:
         with open(esp_output_name, 'w', encoding='utf-8') as f:
             f.write(blocks['esp'][0].strip())
-        print(f"Lógica (esp) guardada en '{esp_output_name}'. (Requiere un intérprete 'esp')")
+        print(f"Lógica (esp) guardada en '{esp_output_name}'.")
             
     if blocks['ing']:
         with open(ing_output_name, 'w', encoding='utf-8') as f:
             f.write(blocks['ing'][0].strip())
-        print(f"Lógica (ING) guardada en '{ing_output_name}'. (Requiere un intérprete 'ING')")
+        print(f"Lógica (ING) guardada en '{ing_output_name}'.")
 
     if blocks['net']:
         with open(net_output_name, 'w', encoding='utf-8') as f:
             f.write(blocks['net'][0].strip())
         print(f"Código .NET (C#) guardado en '{net_output_name}'.")
-        # En un entorno de Replit con .NET SDK, podrías intentar compilar:
-        # try:
-        #     # Esta línea intentaría compilar el proyecto .NET
-        #     # Requiere que el entorno de Replit tenga el .NET SDK y un archivo .csproj
-        #     os.system(f'dotnet build --project {net_output_name}')
-        #     print(f"Compilación .NET ejecutada para '{net_output_name}'.")
-        # except Exception as e:
-        #     print(f"Error al compilar .NET para '{net_output_name}': {e}")
 
     if blocks['lua']:
         with open(lua_output_name, 'w', encoding='utf-8') as f:
             f.write(blocks['lua'][0].strip())
         print(f"Código Lua guardado en '{lua_output_name}'.")
-        # En un Replit con Lua instalado, podrías intentar ejecutar:
-        # try:
-        #     os.system(f'lua {lua_output_name}')
-        #     print(f"Script Lua ejecutado para '{lua_output_name}'.")
-        # except Exception as e:
-        #     print(f"Error al ejecutar Lua para '{lua_output_name}': {e}")
+
+    if blocks['pat']: # Nuevo bloque (pat)
+        with open(pat_output_name, 'w', encoding='utf-8') as f:
+            f.write(blocks['pat'][0].strip())
+        print(f"Patrones (pat) guardados en '{pat_output_name}'.")
 
 
 # --- Aquí comienza la ejecución del programa ---
@@ -103,11 +90,8 @@ if not aio_files_found:
     print("No se encontraron archivos .aio en el directorio actual.")
 else:
     for aio_file in aio_files_found:
-        base_name = os.path.splitext(aio_file)[0] # Obtiene el nombre sin la extensión
+        base_name = os.path.splitext(aio_file)[0]
         aio_code_blocks = parse_aio_file(aio_file)
         if aio_code_blocks:
             save_blocks_to_files(aio_code_blocks, base_name)
     print("\nProcesamiento de todos los archivos .aio completado.")
-
-# En Replit, una vez que main.py se ejecuta y genera los archivos HTML/CSS/JS,
-# la vista previa web debería mostrar el Buscaminas.
