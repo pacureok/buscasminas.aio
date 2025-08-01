@@ -462,7 +462,8 @@ func main() {
 			time.Sleep(time.Second)
 			fmt.Println("Go: Procesando datos de juego en segundo plano...")
 		}
-		fmt.Println("Go: Proceso de backend terminado.")
+		fmt.Println("Go: El servidor de juego simulado está escuchando (conceptual).")
+		// En un caso real, aquí iría la lógica de un servidor HTTP o gRPC.
 	}()
 
 	fmt.Println("Go: El servidor de juego simulado está escuchando (conceptual).")
