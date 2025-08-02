@@ -9,6 +9,33 @@ python_deps = ["none"],
 </meta>
 <np>
 
+<crea>
+# Crear un archivo de ejemplo en el directorio de salida
+$crea=file Name="info_proyecto" %extencion .txt,
+$crea=file Name="Mi_Directorio_de_Imagenes" %Not_extencion,
+$crea=file Name="Mi_Directorio_de_Imagenes/imagen_del_juego" %extencion .png,
+
+# Borrar un archivo existente (ejemplo.txt del directorio de salida)
+%borra=Name="info_proyecto.txt",
+
+# Borrar múltiples archivos en una ruta específica (aquí, en el directorio de salida)
+%borra=file="build" %index.html,style.css, # Borra estos de la carpeta 'build'
+
+# Borrar todo un directorio (¡CUIDADO CON ESTO!)
+# %borra=file="build/temp_files" %all,
+
+# Borrar condicionalmente un archivo (basado en el pin 'n' de esp)
+# Este comando solo se ejecutaría si el pin 'n' (game_over) NO es "si" (es decir, es "no" o "victoria")
+# Para esta demostración, 'n' es "si" por defecto, así que no se borrará.
+%borra=file="build/script.js" &con "n", # Si el pin 'n' es 'no', entonces se borraría script.js
+
+# Borrar condicionalmente otro archivo (basado en el pin 'p' de esp)
+# Este comando solo se ejecutaría si el pin 'p' (victory) es "si"
+# Para esta demostración, 'p' es "no" por defecto, así que no se borrará.
+%borra=file="build/patterns_mi_buscaminas.pat" &con "p",
+</crea>
+<np>
+
 <video>
   <h1>Buscaminas Aio</h1>
   <div class="header">
@@ -261,6 +288,15 @@ $creafuntion "reset_juego_externo" &intert (<tp>resetButton.click();</tp>),
 @decte (evento_tecla= [R] of accion "reset_juego_externo"=run "reset_juego_externo" {</video>}),
 
 $creafuntion "obtener_numero_bombas" &intert (retorno = 15),
+
+# Definición de pines para la lógica condicional en <crea>
+crea=pin=Name=n, # Pin 'n' para estado de game_over
+crea=pin=Name=p, # Pin 'p' para estado de victory
+
+# Asignación de valores a los pines (estos se simulan en main.py)
+# Si la función 'game_over' retornara 'si', 'n' sería 'si'. Aquí es conceptual.
+n=pin={funtion=game_over}="si" "no", # Si game_over es true -> 'si', else 'no'
+p=pin={funtion=victory}="si" "no",   # Si victory es true -> 'si', else 'no'
 (/esp)
 <np>
 
@@ -462,8 +498,7 @@ func main() {
 			time.Sleep(time.Second)
 			fmt.Println("Go: Procesando datos de juego en segundo plano...")
 		}
-		fmt.Println("Go: El servidor de juego simulado está escuchando (conceptual).")
-		// En un caso real, aquí iría la lógica de un servidor HTTP o gRPC.
+		fmt.Println("Go: Proceso de backend terminado.")
 	}()
 
 	fmt.Println("Go: El servidor de juego simulado está escuchando (conceptual).")
@@ -499,3 +534,86 @@ SELECT player_name, score FROM high_scores ORDER BY score DESC LIMIT 5;
 -- Actualización de un puntaje
 UPDATE high_scores SET score = 15000 WHERE player_name = 'HeroeAio';
 </sql>
+<np>
+
+<sln>
+# Este es un archivo .sln de ejemplo.
+# Visual Studio usa esto para organizar tus proyectos.
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MinesweeperBackend", "MinesweeperBackend.csproj", "{YOUR_GUID_HERE}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{YOUR_GUID_HERE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{YOUR_GUID_HERE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{YOUR_GUID_HERE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{YOUR_GUID_HERE}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {ANOTHER_GUID_HERE}
+	EndGlobalSection
+EndGlobal
+</sln>
+<np>
+
+<xaml>
+<Page
+    x:Class="MinesweeperAio.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <Grid>
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+            <TextBlock Text="¡Bienvenido a Buscaminas AIO (UI de XAML)!" FontSize="24" Margin="0,0,0,20"/>
+            <Button Content="Iniciar Juego C#" Width="200" Height="50" Click="StartGame_Click"/>
+        </StackPanel>
+    </Grid>
+</Page>
+</xaml>
+<np>
+
+<config>
+<?xml version="1.0" encoding="utf-8" ?>
+<configuration>
+    <appSettings>
+        <add key="ApiBaseUrl" value="http://localhost:8080/api/" />
+        <add key="LogLevel" value="Debug" />
+        <add key="DatabaseConnectionString" value="Data Source=minesweeper.db" />
+    </appSettings>
+    <system.net>
+        <defaultProxy useDefaultCredentials="true" />
+    </system.net>
+</configuration>
+</config>
+<np>
+
+<csproj>
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>MinesweeperAio</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    </ItemGroup>
+
+</Project>
+</csproj>
