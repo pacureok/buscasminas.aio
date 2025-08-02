@@ -1,9 +1,15 @@
-# main.py en Replit (VERSION CON SLN, XAML, CONFIG, CSPROJ y CREA block)
+# main.py en Replit (VERSION COMPLETA con RS, GO, SQL, META, Output Dir, SLN, XAML, CONFIG, CSPROJ y CREA)
 import re
 import os
 import json # Para manejar configuración JSON/diccionarios simples
+import shutil # Para operaciones de borrado de directorios
 
-# --- Funciones Auxiliares ---
+# Placeholder para los estados de los pines de (esp)
+# En una implementación real, esto vendría de un intérprete de (esp)
+esp_pin_states = {
+    "n": "si", # Por defecto, 'si' para game_over
+    "p": "no",  # Por defecto, 'no' para victory
+}
 
 # Función para leer el bloque <meta> y extraer configuraciones
 def parse_meta_block(content):
@@ -25,116 +31,105 @@ def parse_meta_block(content):
         return config
     return {}
 
-# Función para procesar el bloque <crea>
-def process_crea_block(crea_content, output_base_dir="."):
-    print(f"\n--- Procesando bloque <crea> ---")
-    commands = crea_content.split(',') # Dividir por coma para cada comando/linea
+# Función para parsear el bloque <crea>
+def parse_crea_block(crea_content, output_dir):
+    commands = crea_content.split(',')
+    
+    print("\n--- Procesando comandos <crea> ---")
+    for command in commands:
+        cmd = command.strip()
+        if not cmd or cmd.startswith('#'): continue
 
-    for command_line in commands:
-        command_line = command_line.strip()
-        if not command_line or command_line.startswith('#'):
-            continue # Ignorar líneas vacías o comentarios
+        # Comando $crea=file
+        create_match = re.match(r'\$crea=file Name="([^"]+)"\s*(%extencion\s*\.([^,]+))?\s*(%Not_extencion)?', cmd)
+        if create_match:
+            name = create_match.group(1)
+            extension = create_match.group(3)
+            not_extension_flag = create_match.group(4)
 
-        # --- Comando $crea file ---
-        crea_match = re.match(r'\$crea\s+file\s+Name="([^"]+)"(?:\s+%extencion\s+(\.[a-zA-Z0-9]+))?(?:\s+%No_extension)?', command_line)
-        if crea_match:
-            file_name = crea_match.group(1)
-            extension = crea_match.group(2)
-            has_no_extension = '%No_extension' in command_line # Check if the flag is present
-
-            final_file_name = file_name
-            if extension and not has_no_extension:
-                final_file_name = file_name + extension
-            elif has_no_extension and '.' in file_name: # If No_extension is true but name has dot, remove extension
-                final_file_name = file_name.rsplit('.', 1)[0]
+            file_path = os.path.join(output_dir, name.replace('_', ' ')) # Reemplaza _ por espacio
             
-            file_path = os.path.join(output_base_dir, final_file_name)
-            
-            # Asegurar que el directorio existe
-            dir_name = os.path.dirname(file_path)
-            if dir_name and not os.path.exists(dir_name):
-                os.makedirs(dir_name)
-
-            try:
-                with open(file_path, 'a', encoding='utf-8') as f: # 'a' para crear si no existe, o añadir.
-                    pass # Solo crear el archivo vacío o tocarlo.
-                print(f"  Archivo creado/tocado: '{file_path}'")
-            except Exception as e:
-                print(f"  Error al crear archivo '{file_path}': {e}")
-            continue # Pasar al siguiente comando
-
-        # --- Comando %borra ---
-        borra_match = re.match(r'%borra\s+(?:file\s+Name="([^"]+)"|path="([^"]+)"(?:\s+%all|\s+Files=\[([^\]]+)\])(?:\s+IfCondition="([^"]+)")?)', command_line)
-        if borra_match:
-            # Capturas: (file_name para borra file) | (path para borra path) (all | files list) (condition)
-            file_name_to_delete = borra_match.group(1)
-            path_to_delete_from = borra_match.group(2)
-            is_all = '%all' in command_line
-            files_list_str = borra_match.group(3)
-            condition_flag = borra_match.group(4) # Esto es conceptual por ahora
-
-            # Lógica para la condición (muy básica, solo conceptual)
-            execute_delete = True
-            if condition_flag:
-                # Aquí, en una implementación real, se evaluaría 'condition_flag'
-                # Por ahora, simulamos que siempre es verdadero o que se imprime un aviso
-                print(f"  Aviso: La condición '{condition_flag}' para borrar no se evalúa dinámicamente en este prototipo.")
-                # execute_delete = (some_global_config_dict.get(condition_flag, False) == True)
-            
-            if not execute_delete:
-                print(f"  Omitting delete command due to condition: {command_line}")
-                continue
-
-
-            if file_name_to_delete: # %borra file Name="...."
-                file_path = os.path.join(output_base_dir, file_name_to_delete)
-                if os.path.exists(file_path):
-                    try:
-                        os.remove(file_path)
-                        print(f"  Archivo borrado: '{file_path}'")
-                    except Exception as e:
-                        print(f"  Error al borrar archivo '{file_path}': {e}")
+            if not_extension_flag:
+                # Si es %Not_extencion, intentar crear un directorio
+                if not os.path.exists(file_path):
+                    os.makedirs(file_path)
+                    print(f"Directorio creado: '{file_path}'")
                 else:
-                    print(f"  Advertencia: Archivo '{file_path}' no encontrado para borrar.")
-
-            elif path_to_delete_from: # %borra path="..."
-                target_path = os.path.join(output_base_dir, path_to_delete_from)
-                if not os.path.exists(target_path):
-                    print(f"  Advertencia: Ruta '{target_path}' no encontrada para borrar.")
-                    continue
-
-                if is_all: # %borra path="..." %all
-                    try:
-                        for item in os.listdir(target_path):
-                            item_path = os.path.join(target_path, item)
-                            if os.path.isfile(item_path):
-                                os.remove(item_path)
-                                print(f"  Borrado: '{item_path}'")
-                            elif os.path.isdir(item_path): # Opcional: borrar subdirectorios recursivamente
-                                pass # Para este ejemplo, solo borramos archivos. Usar shutil.rmtree para directorios.
-                        print(f"  Todos los archivos en '{target_path}' borrados.")
-                    except Exception as e:
-                        print(f"  Error al borrar todos los archivos en '{target_path}': {e}")
-                
-                elif files_list_str: # %borra path="..." Files=["file1", "file2"]
-                    try:
-                        # Parsear la lista de archivos (ej. "file1.html","file2.css")
-                        files_to_delete_raw = [f.strip().strip('"') for f in files_list_str.split(',')]
-                        for f_name in files_to_delete_raw:
-                            file_path = os.path.join(target_path, f_name)
-                            if os.path.exists(file_path) and os.path.isfile(file_path):
-                                os.remove(file_path)
-                                print(f"  Borrado: '{file_path}'")
-                            else:
-                                print(f"  Advertencia: Archivo '{file_path}' no encontrado o no es un archivo para borrar.")
-                    except Exception as e:
-                        print(f"  Error al borrar archivos específicos en '{target_path}': {e}")
+                    print(f"Directorio ya existe: '{file_path}'")
+            else:
+                # Crear un archivo con o sin extensión
+                final_path = f"{file_path}.{extension}" if extension else file_path
+                try:
+                    with open(final_path, 'w', encoding='utf-8') as f:
+                        f.write(f"# Archivo creado por Aio: {os.path.basename(final_path)}\n")
+                    print(f"Archivo creado: '{final_path}'")
+                except Exception as e:
+                    print(f"Error al crear archivo '{final_path}': {e}")
             continue
 
-        print(f"  Advertencia: Comando <crea> no reconocido o mal formado: '{command_line}'")
+        # Comando %borra
+        delete_match = re.match(r'%borra=(Name="([^"]+)"|file="([^"]+)")\s*(%all)?\s*(%([a-zA-Z0-9\.,]+))?\s*(&con\s*"([^"]+)")?', cmd)
+        if delete_match:
+            name_to_delete = delete_match.group(2)
+            path_to_delete = delete_match.group(4)
+            all_flag = delete_match.group(5)
+            specific_files_str = delete_match.group(7) # Ej: index.html,ejemplo.c
+            conditional_logic = delete_match.group(9) # Ej: "funcion_esp_que_devuelve_n"
 
+            target_path = ""
+            if name_to_delete:
+                target_path = os.path.join(output_dir, name_to_delete.replace('_', ' '))
+            elif path_to_delete:
+                target_path = os.path.join(output_dir, path_to_delete.replace('_', ' '))
+            
+            # Evaluar la condición &con
+            condition_met = True
+            if conditional_logic:
+                # Aquí es donde el intérprete de Aio real consultaría el estado de (esp)
+                # Para esta demo, lo simulamos.
+                pin_name = conditional_logic.strip('"')
+                if pin_name in esp_pin_states:
+                    if esp_pin_states[pin_name] == "no": # Asumimos "no" significa no ejecutar borrado
+                        condition_met = False
+                        print(f"Condición '{pin_name}' es 'no'. Borrado no ejecutado para '{target_path}'.")
+                else:
+                    print(f"Advertencia: Pin '{pin_name}' no encontrado en estados de (esp). Ejecutando borrado por defecto.")
+            
+            if not condition_met:
+                continue # Saltar el borrado si la condición no se cumple
 
-# --- Funciones Principales de Parsing y Guardado ---
+            # Ejecutar el borrado
+            if all_flag: # %all
+                if os.path.exists(target_path):
+                    if os.path.isdir(target_path):
+                        shutil.rmtree(target_path)
+                        print(f"Directorio y contenido borrados: '{target_path}'")
+                    else:
+                        os.remove(target_path)
+                        print(f"Archivo borrado: '{target_path}'")
+                else:
+                    print(f"Advertencia: '{target_path}' no encontrado para borrado %all.")
+            elif specific_files_str: # %file1,file2,...
+                files_to_delete = [f.strip() for f in specific_files_str.split(',')]
+                for f_name in files_to_delete:
+                    file_to_delete_path = os.path.join(target_path, f_name.replace('_', ' '))
+                    if os.path.exists(file_to_delete_path) and os.path.isfile(file_to_delete_path):
+                        os.remove(file_to_delete_path)
+                        print(f"Archivo borrado: '{file_to_delete_path}'")
+                    else:
+                        print(f"Advertencia: '{file_to_delete_path}' no encontrado para borrado.")
+            elif name_to_delete: # %borra=Name="ejemplo.js" (borra solo ese archivo en output_dir)
+                if os.path.exists(target_path) and os.path.isfile(target_path):
+                    os.remove(target_path)
+                    print(f"Archivo borrado: '{target_path}'")
+                else:
+                    print(f"Advertencia: '{target_path}' no encontrado para borrado por nombre.")
+            else:
+                print(f"Error: Comando %borra inválido o incompleto: {cmd}")
+            continue
+        
+        print(f"Advertencia: Comando <crea> no reconocido o mal formado: '{cmd}'")
+
 
 # Esta función lee un archivo .aio y extrae los bloques de código
 def parse_aio_file(file_path):
@@ -144,7 +139,7 @@ def parse_aio_file(file_path):
             content = file.read()
     except FileNotFoundError:
         print(f"Error: El archivo '{file_path}' no fue encontrado.")
-        return None, {}
+        return None
 
     # Obtener configuración del bloque <meta>
     config = parse_meta_block(content)
@@ -162,12 +157,12 @@ def parse_aio_file(file_path):
         'rs': re.findall(r'<rs>(.*?)</rs>', content, re.DOTALL),
         'go': re.findall(r'<go>(.*?)</go>', content, re.DOTALL),
         'sql': re.findall(r'<sql>(.*?)</sql>', content, re.DOTALL),
-        'sln': re.findall(r'<sln>(.*?)</sln>', content, re.DOTALL),   # Nuevo patrón para SLN
+        'meta_block': re.findall(r'<meta>(.*?)</meta>', content, re.DOTALL),
+        'crea_block': re.findall(r'<crea>(.*?)</crea>', content, re.DOTALL), # Nuevo patrón para <crea>
+        'sln': re.findall(r'<sln>(.*?)</sln>', content, re.DOTALL), # Nuevo patrón para SLN
         'xaml': re.findall(r'<xaml>(.*?)</xaml>', content, re.DOTALL), # Nuevo patrón para XAML
         'config': re.findall(r'<config>(.*?)</config>', content, re.DOTALL), # Nuevo patrón para CONFIG
         'csproj': re.findall(r'<csproj>(.*?)</csproj>', content, re.DOTALL), # Nuevo patrón para CSPROJ
-        'crea': re.findall(r'<crea>(.*?)</crea>', content, re.DOTALL), # Nuevo patrón para CREA
-        'meta_block': re.findall(r'<meta>(.*?)</meta>', content, re.DOTALL) # Para guardar el contenido bruto del meta si es necesario
     }
     return blocks, config
 
@@ -179,126 +174,71 @@ def save_blocks_to_files(blocks, config, base_name):
         os.makedirs(output_dir)
         print(f"Directorio de salida '{output_dir}/' creado.")
 
-    # Rutas absolutas para los archivos de salida
-    html_output_path = os.path.join(output_dir, 'index.html')
-    css_output_path = os.path.join(output_dir, 'style.css')
-    js_output_path = os.path.join(output_dir, 'script.js')
-    
-    # Archivos de lógica y otros
-    esp_output_path = os.path.join(output_dir, f'logic_{base_name}.esp')
-    ing_output_path = os.path.join(output_dir, f'logic_{base_name}.ing')
-    pat_output_path = os.path.join(output_dir, f'patterns_{base_name}.pat')
+    # Lista de tuplas (contenido_bloque, nombre_archivo_deseado, extensión)
+    files_to_create = []
 
-    net_output_path = os.path.join(output_dir, f'Program_{base_name}.cs')
-    lua_output_path = os.path.join(output_dir, f'main_{base_name}.lua')
-    rs_output_path = os.path.join(output_dir, f'src/main_{base_name}.rs') # Rust típicamente en src/
-    go_output_path = os.path.join(output_dir, f'main_{base_name}.go')
-    sql_output_path = os.path.join(output_dir, f'schema_{base_name}.sql')
+    # Bloques web
+    if blocks['html']: files_to_create.append((blocks['html'][0], 'index', '.html'))
+    if blocks['css']: files_to_create.append((blocks['css'][0], 'style', '.css'))
+    if blocks['js']: files_to_create.append((blocks['js'][0], 'script', '.js'))
 
-    # Archivos .NET de proyecto
-    sln_output_path = os.path.join(output_dir, f'{base_name}.sln')
-    xaml_output_path = os.path.join(output_dir, f'{base_name}.xaml')
-    config_output_path = os.path.join(output_dir, f'App.config') # O Web.config
-    csproj_output_path = os.path.join(output_dir, f'{base_name}.csproj')
+    # Bloques de lógica DSL
+    if blocks['esp']: files_to_create.append((blocks['esp'][0], f'logic_{base_name}', '.esp'))
+    if blocks['ing']: files_to_create.append((blocks['ing'][0], f'logic_{base_name}', '.ing'))
+    if blocks['pat']: files_to_create.append((blocks['pat'][0], f'patterns_{base_name}', '.pat'))
 
-    meta_output_path = os.path.join(output_dir, f'config_{base_name}.meta') # Opcional: guardar el meta bruto
+    # Bloques de otros lenguajes
+    if blocks['net']: files_to_create.append((blocks['net'][0], f'Program_{base_name}', '.cs'))
+    if blocks['lua']: files_to_create.append((blocks['lua'][0], f'main_{base_name}', '.lua'))
+    if blocks['rs']: files_to_create.append((blocks['rs'][0], f'src/main_{base_name}', '.rs')) # Rust en src/
+    if blocks['go']: files_to_create.append((blocks['go'][0], f'main_{base_name}', '.go'))
+    if blocks['sql']: files_to_create.append((blocks['sql'][0], f'schema_{base_name}', '.sql'))
+
+    # Nuevos bloques .NET/configuración
+    if blocks['sln']: files_to_create.append((blocks['sln'][0], f'{base_name}', '.sln'))
+    if blocks['xaml']: files_to_create.append((blocks['xaml'][0], f'MainPage', '.xaml')) # O un nombre genérico
+    if blocks['config']: files_to_create.append((blocks['config'][0], f'App', '.config')) # App.config
+    if blocks['csproj']: files_to_create.append((blocks['csproj'][0], f'{base_name}', '.csproj'))
 
 
-    if blocks['html']:
-        with open(html_output_path, 'w', encoding='utf-8') as f:
-            f.write("<!DOCTYPE html>\n<html>\n<head>\n")
-            f.write(f"<title>{config.get('project_name', 'Aio Project')}</title>\n")
-            f.write(f"<link rel='stylesheet' href='{os.path.basename(css_output_path)}'>\n")
-            f.write("</head>\n<body>\n")
-            f.write(blocks['html'][0].strip())
-            f.write(f"\n<script src='{os.path.basename(js_output_path)}'></script>\n</body>\n</html>")
-        print(f"'{html_output_path}' generado con éxito.")
-    
-    if blocks['css']:
-        with open(css_output_path, 'w', encoding='utf-8') as f:
-            f.write(blocks['css'][0].strip())
-        print(f"'{css_output_path}' generado con éxito.")
+    for content, name, ext in files_to_create:
+        # Manejo especial para Rust (va en src/)
+        if ext == '.rs':
+            file_dir = os.path.join(output_dir, os.path.dirname(name))
+            file_name = os.path.basename(name)
+            if not os.path.exists(file_dir):
+                os.makedirs(file_dir)
+            full_path = os.path.join(file_dir, f'{file_name}{ext}')
+        else:
+            full_path = os.path.join(output_dir, f'{name}{ext}')
 
-    if blocks['js']:
-        with open(js_output_path, 'w', encoding='utf-8') as f:
-            f.write(blocks['js'][0].strip())
-        print(f"'{js_output_path}' generado con éxito.")
+        try:
+            with open(full_path, 'w', encoding='utf-8') as f:
+                # Caso especial para HTML: añadir encabezado y enlaces a CSS/JS
+                if ext == '.html':
+                    f.write("<!DOCTYPE html>\n<html>\n<head>\n")
+                    f.write(f"<title>{config.get('project_name', 'Aio Project')}</title>\n")
+                    f.write(f"<link rel='stylesheet' href='{os.path.basename(os.path.join(output_dir, 'style.css'))}'>\n")
+                    f.write("</head>\n<body>\n")
+                    f.write(content.strip())
+                    f.write(f"\n<script src='{os.path.basename(os.path.join(output_dir, 'script.js'))}'></script>\n</body>\n</html>")
+                else:
+                    f.write(content.strip())
+            print(f"'{full_path}' generado con éxito.")
+        except Exception as e:
+            print(f"Error al generar '{full_path}': {e}")
             
-    if blocks['esp']:
-        with open(esp_output_path, 'w', encoding='utf-8') as f:
-            f.write(blocks['esp'][0].strip())
-        print(f"Lógica (esp) guardada en '{esp_output_path}'.")
-            
-    if blocks['ing']:
-        with open(ing_output_path, 'w', encoding='utf-8') as f:
-            f.write(blocks['ing'][0].strip())
-        print(f"Lógica (ING) guardada en '{ing_output_path}'.")
+    # Procesa el bloque <crea> después de generar los archivos iniciales
+    if blocks['crea_block']:
+        for crea_content in blocks['crea_block']:
+            parse_crea_block(crea_content, output_dir)
 
-    if blocks['pat']:
-        with open(pat_output_path, 'w', encoding='utf-8') as f:
-            f.write(blocks['pat'][0].strip())
-        print(f"Patrones (pat) guardados en '{pat_output_path}'.")
-
-    if blocks['net']:
-        with open(net_output_path, 'w', encoding='utf-8') as f:
-            f.write(blocks['net'][0].strip())
-        print(f"Código .NET (C#) guardado en '{net_output_path}'.")
-
-    if blocks['lua']:
-        with open(lua_output_path, 'w', encoding='utf-8') as f:
-            f.write(blocks['lua'][0].strip())
-        print(f"Código Lua guardado en '{lua_output_path}'.")
-
-    if blocks['rs']:
-        rust_src_dir = os.path.join(output_dir, 'src')
-        if not os.path.exists(rust_src_dir):
-            os.makedirs(rust_src_dir)
-        with open(rs_output_path, 'w', encoding='utf-8') as f:
-            f.write(blocks['rs'][0].strip())
-        print(f"Código Rust guardado en '{rs_output_path}'.")
-    
-    if blocks['go']:
-        with open(go_output_path, 'w', encoding='utf-8') as f:
-            f.write(blocks['go'][0].strip())
-        print(f"Código Go guardado en '{go_output_path}'.")
-
-    if blocks['sql']:
-        with open(sql_output_path, 'w', encoding='utf-8') as f:
-            f.write(blocks['sql'][0].strip())
-        print(f"Código SQL guardado en '{sql_output_path}'.")
-
-    # Nuevos bloques .NET
-    if blocks['sln']:
-        with open(sln_output_path, 'w', encoding='utf-8') as f:
-            f.write(blocks['sln'][0].strip())
-        print(f"Archivo de Solución (.sln) guardado en '{sln_output_path}'.")
-
-    if blocks['xaml']:
-        with open(xaml_output_path, 'w', encoding='utf-8') as f:
-            f.write(blocks['xaml'][0].strip())
-        print(f"Archivo XAML (.xaml) guardado en '{xaml_output_path}'.")
-
-    if blocks['config']:
-        with open(config_output_path, 'w', encoding='utf-8') as f:
-            f.write(blocks['config'][0].strip())
-        print(f"Archivo de Configuración (.config) guardado en '{config_output_path}'.")
-
-    if blocks['csproj']:
-        with open(csproj_output_path, 'w', encoding='utf-8') as f:
-            f.write(blocks['csproj'][0].strip())
-        print(f"Archivo de Proyecto C# (.csproj) guardado en '{csproj_output_path}'.")
-
+    # Opcional: guardar el contenido bruto del meta
     if blocks['meta_block']:
+        meta_output_path = os.path.join(output_dir, f'config_{base_name}.meta')
         with open(meta_output_path, 'w', encoding='utf-8') as f:
             f.write(blocks['meta_block'][0].strip())
         print(f"Configuración meta guardada en '{meta_output_path}'.")
-
-    # Procesar el bloque <crea> DESPUÉS de haber generado todos los demás archivos
-    # para que pueda operar sobre ellos si es necesario.
-    if blocks['crea']:
-        for crea_content_block in blocks['crea']:
-            process_crea_block(crea_content_block, output_dir)
-
 
 # --- Aquí comienza la ejecución del programa ---
 print("Buscando archivos .aio en el directorio actual...")
